@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import type { Hackathon } from '@/types/hackathon'
 
 interface Hackathon {
   id: string;
