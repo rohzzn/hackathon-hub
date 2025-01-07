@@ -1,32 +1,46 @@
-import { Calendar, MapPin, Trophy, ExternalLink } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import type { HackathonCardProps } from '@/types/hackathon'
-import { addToCalendar } from './calendar-integration'
+// app/components/HackathonCard.tsx
+import { Calendar, MapPin, Trophy, ExternalLink } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import type { HackathonCardProps } from '@/types/hackathon';
+import { addToCalendar } from './calendar-integration';
 
+export default function HackathonCard({ hackathon }: HackathonCardProps) {
+  const getPlatformVariant = (platform: string) => {
+    switch(platform) {
+      case 'Devpost': return 'default';
+      case 'MLH': return 'destructive';
+      default: return 'secondary';
+    }
+  };
 
-export default function HackathonCard({ hackathon }) {
+  const getModeVariant = (mode: string) => {
+    switch(mode) {
+      case 'Online': return 'outline';
+      case 'In-Person': return 'default';
+      default: return 'secondary';
+    }
+  };
+
   return (
     <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <Badge variant={
-            hackathon.platform === 'Devpost' ? 'default' :
-            hackathon.platform === 'MLH' ? 'destructive' :
-            'secondary'
-          }>{hackathon.platform}</Badge>
-          <Badge variant={
-            hackathon.mode === 'Online' ? 'outline' :
-            hackathon.mode === 'In-Person' ? 'default' :
-            'secondary'
-          }>{hackathon.mode}</Badge>
+          <Badge variant={getPlatformVariant(hackathon.platform)}>
+            {typeof hackathon.platform === 'string' ? hackathon.platform : 'Unknown'}
+          </Badge>
+          <Badge variant={getModeVariant(hackathon.mode)}>
+            {typeof hackathon.mode === 'string' ? hackathon.mode : 'Unknown'}
+          </Badge>
         </div>
-        <CardTitle className="font-poppins">{hackathon.title}</CardTitle>
+        <CardTitle className="font-poppins">
+          {typeof hackathon.title === 'string' ? hackathon.title : 'Untitled Hackathon'}
+        </CardTitle>
         <CardDescription>
           <div className="flex items-center gap-2">
             <MapPin className="h-4 w-4" />
-            <span>{hackathon.location}</span>
+            <span>{typeof hackathon.location === 'string' ? hackathon.location : 'Location TBA'}</span>
           </div>
         </CardDescription>
       </CardHeader>
@@ -48,16 +62,19 @@ export default function HackathonCard({ hackathon }) {
         </div>
         
         <div className="flex flex-wrap gap-2">
-          {hackathon.techStack.map((tech, index) => (
-            <Badge key={index} variant="secondary">{tech}</Badge>
-          ))}
+          {Array.isArray(hackathon.techStack) ? 
+            hackathon.techStack.map((tech, index) => (
+              <Badge key={index} variant="secondary">
+                {typeof tech === 'string' ? tech : ''}
+              </Badge>
+            )) : null}
         </div>
       </CardContent>
       
       <CardFooter className="flex gap-2">
         <Button 
           className="flex-1" 
-          onClick={() => window.open(hackathon.url, '_blank')}
+          onClick={() => hackathon.url && window.open(hackathon.url, '_blank')}
         >
           Apply Now
           <ExternalLink className="ml-2 h-4 w-4" />
@@ -70,5 +87,5 @@ export default function HackathonCard({ hackathon }) {
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
