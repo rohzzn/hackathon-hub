@@ -4,72 +4,51 @@ import { parse } from 'node-html-parser';
 import * as cheerio from 'cheerio';
 import type { Hackathon } from '@/types/hackathon';
 
-async function fetchDevfolio(): Promise<Hackathon[]> {
-  try {
-    const headers = {
-      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
-    };
-    const response = await fetch('https://devfolio.co/hackathons', { headers });
-    const html = await response.text();
-    const hackathons: Hackathon[] = [];
-    const $ = cheerio.load(html);
+function getHackathonStatus(startDate: string, endDate: string): 'upcoming' | 'ongoing' | 'closed' {
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = new Date(endDate);
 
-    $('[data-testid="hackathon-card"]').each((_, element) => {
-      const title = $(element).find('h3').text().trim();
-      const url = 'https://devfolio.co' + $(element).find('a').attr('href');
-      const dates = $(element).find('[data-testid="date"]').text().trim();
-      const mode = $(element).find('[data-testid="mode"]').text().trim();
-
-      hackathons.push({
-        id: `devfolio-${hackathons.length}`,
-        title,
-        platform: 'Devfolio',
-        registrationDeadline: dates,
-        eventDate: dates,
-        prizePool: 'TBA',
-        mode: mode.includes('Online') ? 'Online' : mode.includes('Hybrid') ? 'Hybrid' : 'In-Person',
-        techStack: [],
-        location: mode.includes('Online') ? 'Online' : 'Various',
-        url
-      });
-    });
-
-    return hackathons;
-  } catch (error) {
-    console.error('Error fetching Devfolio hackathons:', error);
-    return [];
-  }
+  if (now < start) return 'upcoming';
+  if (now > end) return 'closed';
+  return 'ongoing';
 }
 
 async function fetchUnstop(): Promise<Hackathon[]> {
   try {
     const headers = {
-      'User-Agent': 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      'Accept': 'application/json',
+      'Referer': 'https://unstop.com/hackathons'
     };
-    const response = await fetch('https://unstop.com/hackathons', { headers });
-    const html = await response.text();
-    const $ = cheerio.load(html);
+    
+    const response = await fetch('https://unstop.com/api/public/opportunity/search?opportunity_type=hackathons&page=1&per_page=20', { headers });
+    const data = await response.json();
+    
     const hackathons: Hackathon[] = [];
+    
+    if (data?.data?.data) {
+      data.data.data.forEach((hackathon: any) => {
+        const startDate = hackathon.start_date || 'TBA';
+        const endDate = hackathon.end_date || 'TBA';
+        const status = (startDate !== 'TBA' && endDate !== 'TBA') ? 
+          getHackathonStatus(startDate, endDate) : 'upcoming';
 
-    $('.opportunity-card').each((_, element) => {
-      const title = $(element).find('.opportunity-title').text().trim();
-      const url = $(element).find('a').attr('href') || '';
-      const dates = $(element).find('.date-text').text().trim();
-      const location = $(element).find('.location').text().trim();
-
-      hackathons.push({
-        id: `unstop-${hackathons.length}`,
-        title,
-        platform: 'Unstop',
-        registrationDeadline: dates,
-        eventDate: dates,
-        prizePool: 'TBA',
-        mode: location.toLowerCase().includes('online') ? 'Online' : 'Hybrid',
-        techStack: [],
-        location,
-        url: `https://unstop.com${url}`
+        hackathons.push({
+          id: `unstop-${hackathon.id}`,
+          title: hackathon.title,
+          platform: 'Unstop',
+          startDate,
+          participants: hackathon.total_registrations || 0,
+          status,
+          mode: hackathon.participation_mode?.toLowerCase().includes('online') ? 'Online' : 
+                hackathon.participation_mode?.toLowerCase().includes('hybrid') ? 'Hybrid' : 'In-Person',
+          techStack: hackathon.tags || [],
+          location: hackathon.venue_city || hackathon.venue_country || 'Various',
+          url: `https://unstop.com/hackathon/${hackathon.slug}/${hackathon.id}`
+        });
       });
-    });
+    }
 
     return hackathons;
   } catch (error) {
@@ -82,18 +61,27 @@ async function fetchDevpost(): Promise<Hackathon[]> {
   try {
     const response = await fetch('https://devpost.com/api/hackathons');
     const data = await response.json();
-    return data.hackathons.map((h: any, index: number) => ({
-      id: `devpost-${index}`,
-      title: h.title,
-      platform: 'Devpost',
-      registrationDeadline: h.submission_period_dates,
-      eventDate: h.submission_period_dates,
-      prizePool: h.prize_amount ? `$${h.prize_amount}` : 'TBA',
-      mode: h.online_only ? 'Online' : 'Hybrid',
-      techStack: h.themes || [],
-      location: h.online_only ? 'Online' : h.location || 'Various',
-      url: h.url
-    }));
+    return data.hackathons.map((h: any, index: number) => {
+      // Extract start date from submission_period_dates
+      const dateMatch = h.submission_period_dates.match(/(\w+ \d+, \d{4})/);
+      const startDate = dateMatch ? dateMatch[0] : 'TBA';
+      const endDate = h.end_time || 'TBA';
+      const status = (startDate !== 'TBA' && endDate !== 'TBA') ? 
+        getHackathonStatus(startDate, endDate) : 'upcoming';
+
+      return {
+        id: `devpost-${index}`,
+        title: h.title,
+        platform: 'Devpost',
+        startDate,
+        participants: h.registrations_count || 0,
+        status,
+        mode: h.online_only ? 'Online' : 'Hybrid',
+        techStack: h.themes || [],
+        location: h.online_only ? 'Online' : h.location || 'Various',
+        url: h.url
+      };
+    });
   } catch (error) {
     console.error('Error fetching Devpost hackathons:', error);
     return [];
@@ -102,7 +90,7 @@ async function fetchDevpost(): Promise<Hackathon[]> {
 
 async function fetchMLH(): Promise<Hackathon[]> {
   try {
-    const response = await fetch('https://mlh.io/seasons/2024/events');
+    const response = await fetch('https://mlh.io/seasons/2025/events');
     const html = await response.text();
     const $ = cheerio.load(html);
     const hackathons: Hackathon[] = [];
@@ -114,13 +102,23 @@ async function fetchMLH(): Promise<Hackathon[]> {
       const location = $(element).find('.event-location').text().trim();
       const logo = $(element).find('img').attr('src');
 
+      // Parse the date to get just the start date
+      const dateMatch = date.match(/(\w+ \d+)/);
+      const startDate = dateMatch ? `${dateMatch[0]}, 2024` : 'TBA';
+      // Assume MLH hackathons last for 48 hours
+      const endDate = startDate !== 'TBA' ? 
+        new Date(new Date(startDate).getTime() + (48 * 60 * 60 * 1000)).toISOString() : 'TBA';
+      
+      const status = (startDate !== 'TBA' && endDate !== 'TBA') ? 
+        getHackathonStatus(startDate, endDate) : 'upcoming';
+
       hackathons.push({
         id: `mlh-${hackathons.length}`,
         title,
         platform: 'MLH',
-        registrationDeadline: date,
-        eventDate: date,
-        prizePool: 'Various',
+        startDate,
+        participants: 0, // MLH doesn't provide participant count
+        status,
         mode: location.toLowerCase().includes('online') ? 'Online' : 'Hybrid',
         techStack: [],
         location,
@@ -137,14 +135,24 @@ async function fetchMLH(): Promise<Hackathon[]> {
 }
 
 async function fetchHackathonsFromPlatforms(): Promise<Hackathon[]> {
-  const [devpost, mlh, devfolio, unstop] = await Promise.all([
-    fetchDevpost(),
-    fetchMLH(),
-    fetchDevfolio(),
-    fetchUnstop()
-  ]);
+  try {
+    const [devpost, mlh, unstop] = await Promise.allSettled([
+      fetchDevpost(),
+      fetchMLH(),
+      fetchUnstop()
+    ]);
 
-  return [...devpost, ...mlh, ...devfolio, ...unstop];
+    const results: Hackathon[] = [];
+    
+    if (devpost.status === 'fulfilled') results.push(...devpost.value);
+    if (mlh.status === 'fulfilled') results.push(...mlh.value);
+    if (unstop.status === 'fulfilled') results.push(...unstop.value);
+
+    return results;
+  } catch (error) {
+    console.error('Error fetching hackathons:', error);
+    return [];
+  }
 }
 
 export async function GET(request: Request) {
@@ -152,6 +160,7 @@ export async function GET(request: Request) {
   const platform = searchParams.get('platform');
   const mode = searchParams.get('mode');
   const search = searchParams.get('search');
+  const status = searchParams.get('status');
 
   let hackathons = await fetchHackathonsFromPlatforms();
 
@@ -161,6 +170,10 @@ export async function GET(request: Request) {
 
   if (mode && mode !== 'all') {
     hackathons = hackathons.filter(h => h.mode.toLowerCase() === mode.toLowerCase());
+  }
+
+  if (status && status !== 'all') {
+    hackathons = hackathons.filter(h => h.status === status);
   }
 
   if (search) {

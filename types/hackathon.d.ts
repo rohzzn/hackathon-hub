@@ -2,23 +2,15 @@
 export interface Hackathon {
   id: string;
   title: string;
-  platform: 'Devpost' | 'MLH' | 'Devfolio' | 'Unstop';
-  registrationDeadline: string;
-  eventDate: string;
-  prizePool: string;
+  platform: 'Devpost' | 'MLH' | 'Unstop';
+  startDate: string;
+  participants: number;
+  status: 'upcoming' | 'ongoing' | 'closed';
   mode: 'Online' | 'In-Person' | 'Hybrid';
   techStack: string[];
   location: string;
   url: string;
   logoUrl?: string;
-}
-
-export interface CalendarEvent {
-  title: string;
-  description?: string;
-  startDate: string;
-  endDate: string;
-  location?: string;
 }
 
 export interface HackathonCardProps {

@@ -1,6 +1,14 @@
 // app/components/calendar-integration.ts
 import { format } from 'date-fns';
-import type { CalendarEvent, Hackathon } from '@/types/hackathon';
+import type { Hackathon } from '@/types/hackathon';
+
+interface CalendarEvent {
+  title: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  location: string;
+}
 
 export function generateGoogleCalendarUrl(event: CalendarEvent): string {
   const base = 'https://calendar.google.com/calendar/render?action=TEMPLATE';
@@ -14,31 +22,16 @@ export function generateGoogleCalendarUrl(event: CalendarEvent): string {
   return `${base}&${details}`;
 }
 
-export function generateICSFile(event: CalendarEvent): string {
-  const formatDate = (date: string) => format(new Date(date), "yyyyMMdd'T'HHmmss'Z'");
-  
-  const icsContent = [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'BEGIN:VEVENT',
-    `DTSTART:${formatDate(event.startDate)}`,
-    `DTEND:${formatDate(event.endDate)}`,
-    `SUMMARY:${event.title}`,
-    event.description && `DESCRIPTION:${event.description}`,
-    event.location && `LOCATION:${event.location}`,
-    'END:VEVENT',
-    'END:VCALENDAR'
-  ].filter(Boolean).join('\r\n');
-
-  return 'data:text/calendar;charset=utf8,' + encodeURIComponent(icsContent);
-}
-
 export function addToCalendar(hackathon: Hackathon): void {
+  // Assume a hackathon is 48 hours long if no end date is provided
+  const startDate = new Date(hackathon.startDate);
+  const endDate = new Date(startDate.getTime() + (48 * 60 * 60 * 1000));
+
   const event: CalendarEvent = {
     title: hackathon.title,
     description: `${hackathon.title} on ${hackathon.platform}\n${hackathon.url}`,
-    startDate: hackathon.eventDate.split('-')[0].trim(),
-    endDate: hackathon.eventDate.split('-')[1]?.trim() || hackathon.eventDate,
+    startDate: format(startDate, "yyyyMMdd'T'HHmmss'Z'"),
+    endDate: format(endDate, "yyyyMMdd'T'HHmmss'Z'"),
     location: hackathon.location
   };
 

@@ -1,3 +1,4 @@
+// app/components/SearchAndFilter.tsx
 'use client'
 
 import { useState } from 'react'
@@ -7,17 +8,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface SearchAndFilterProps {
-  onFilterChange: (platform: string, mode: string, search: string) => void
+  onFilterChange: (platform: string, mode: string, status: string, search: string) => void
 }
 
 export default function SearchAndFilter({ onFilterChange }: SearchAndFilterProps) {
   const [search, setSearch] = useState('')
   const [platform, setPlatform] = useState('all')
   const [mode, setMode] = useState('all')
+  const [status, setStatus] = useState('all')
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    onFilterChange(platform, mode, search)
+    onFilterChange(platform, mode, status, search)
   }
 
   return (
@@ -43,6 +45,7 @@ export default function SearchAndFilter({ onFilterChange }: SearchAndFilterProps
               <SelectItem value="all">All Platforms</SelectItem>
               <SelectItem value="Devpost">Devpost</SelectItem>
               <SelectItem value="MLH">MLH</SelectItem>
+              <SelectItem value="Unstop">Unstop</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -60,9 +63,22 @@ export default function SearchAndFilter({ onFilterChange }: SearchAndFilterProps
             </SelectContent>
           </Select>
         </div>
+        <div className="w-full sm:w-auto">
+          <Label htmlFor="status">Status</Label>
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger id="status">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="upcoming">Upcoming</SelectItem>
+              <SelectItem value="ongoing">Ongoing</SelectItem>
+              <SelectItem value="closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
       <Button type="submit">Search</Button>
     </form>
   )
 }
-

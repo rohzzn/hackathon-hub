@@ -3,21 +3,10 @@
 import { useQuery } from '@tanstack/react-query'
 import HackathonCard from './HackathonCard'
 import { Skeleton } from "@/components/ui/skeleton"
+import type { Hackathon } from '@/types/hackathon'
 
-interface Hackathon {
-  id: string
-  title: string
-  platform: string
-  registrationDeadline: string
-  eventDate: string
-  prizePool: string
-  mode: string
-  techStack: string[]
-  location: string
-}
-
-async function fetchHackathons(platform: string, mode: string, search: string): Promise<Hackathon[]> {
-  const params = new URLSearchParams({ platform, mode, search }).toString()
+async function fetchHackathons(platform: string, mode: string, status: string, search: string): Promise<Hackathon[]> {
+  const params = new URLSearchParams({ platform, mode, status, search }).toString()
   const response = await fetch(`/api/hackathons?${params}`)
   if (!response.ok) {
     throw new Error('Network response was not ok')
@@ -25,10 +14,20 @@ async function fetchHackathons(platform: string, mode: string, search: string): 
   return response.json()
 }
 
-export default function HackathonList({ platform, mode, search }: { platform: string, mode: string, search: string }) {
+export default function HackathonList({ 
+  platform, 
+  mode, 
+  status,
+  search 
+}: { 
+  platform: string, 
+  mode: string, 
+  status: string,
+  search: string 
+}) {
   const { data: hackathons, isLoading, error } = useQuery<Hackathon[], Error>({
-    queryKey: ['hackathons', platform, mode, search],
-    queryFn: () => fetchHackathons(platform, mode, search),
+    queryKey: ['hackathons', platform, mode, status, search],
+    queryFn: () => fetchHackathons(platform, mode, status, search),
     refetchInterval: 300000, // Refetch every 5 minutes
   })
 
@@ -58,4 +57,3 @@ export default function HackathonList({ platform, mode, search }: { platform: st
     </div>
   )
 }
-
